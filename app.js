@@ -4,11 +4,13 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
 
+require('dotenv').config()
+
 const app = express();
 const port = process.env.PORT || 9000;
 
 // Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/musicdb', { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(`mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}.mongodb.net/?retryWrites=true&w=majority`);
 const db = mongoose.connection;
 
 // Middleware

@@ -5,12 +5,9 @@ const mongoose = require("mongoose");
 
 require("dotenv").config();
 
-const mongoUrl = "mongodb://localhost:27017";
-const dbName = "nomDeVotreBase";
-
 const directoryPath = "../../Uploads";
 
-// Définir le schéma Mongoose pour l'artiste
+// Define Artist Schema
 const ArtistSchema = new mongoose.Schema({
   name: String,
   albums: [{ type: mongoose.Schema.Types.ObjectId, ref: "Album" }],
@@ -19,7 +16,7 @@ const ArtistSchema = new mongoose.Schema({
 
 const Artist = mongoose.model("Artist", ArtistSchema);
 
-// Définir le schéma Mongoose pour l'album
+//  Define Album Schema
 const AlbumSchema = new mongoose.Schema({
   title: String,
   tracks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Track" }],
@@ -28,16 +25,17 @@ const AlbumSchema = new mongoose.Schema({
 
 const Album = mongoose.model("Album", AlbumSchema);
 
-// Définir le schéma Mongoose pour la piste
+//  Define Track Schema
 const TrackSchema = new mongoose.Schema({
   title: String,
   duration: String,
   cover: String,
+  url: String,
 });
 
 const Track = mongoose.model("Track", TrackSchema);
 
-// Connexion à MongoDB avec Mongoose
+// Connection to MongoDB with Mongoose
 mongoose
   .connect(
     `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}.mongodb.net/?retryWrites=true&w=majority`
@@ -45,9 +43,7 @@ mongoose
   .then(() => {
     console.log("Successfully connect to database");
 
-    // Appel de la fonction pour traiter le dossier
     processDirectory().then(() => {
-      // Fermer la connexion à la base de données après avoir traité tous les fichiers
       mongoose.connection.close();
     });
   })
@@ -55,21 +51,19 @@ mongoose
     console.error("Error connecting to database:", err);
   });
 
-// Fonction pour parcourir le dossier et extraire les métadonnées
 const processDirectory = async () => {
   try {
     const files = fs.readdirSync(directoryPath);
     for (const file of files) {
       const filePath = path.join(directoryPath, file);
+      const serverFileURL = "http://localhost:9000/music/" + file;
+      const coverFileURL = "http://localhost:9000/covers/" + path.parse(file).name + ".jpg";
 
       if (path.extname(filePath).toLowerCase() === ".mp3") {
         try {
           const metadata = await mm.parseFile(filePath);
 
-          const coverData =
-            metadata.common && metadata.common.picture
-              ? metadata.common.picture[0].data
-              : null;
+          const coverData = coverFileURL;
 
           const artistInstance = await Artist.findOneAndUpdate(
             { name: metadata.common.artist },
@@ -82,15 +76,13 @@ const processDirectory = async () => {
             {
               $setOnInsert: {
                 title: metadata.common.album,
-                cover: coverData
-                  ? `data:image/jpeg;base64,${coverData.toString("base64")}`
-                  : null,
+                cover: coverData,
               },
             },
             { upsert: true, new: true }
           );
 
-          // Vérifier si la piste existe déjà
+          // Check if track already exists
           const existingTrack = await Track.findOne({
             title: metadata.common.title,
           });
@@ -99,9 +91,8 @@ const processDirectory = async () => {
             const trackInstance = new Track({
               title: metadata.common.title,
               duration: metadata.format.duration,
-              cover: coverData
-                ? `data:image/jpeg;base64,${coverData.toString("base64")}`
-                : null,
+              cover: coverData,
+              url: serverFileURL,
             });
 
             await trackInstance.save();
@@ -122,7 +113,6 @@ const processDirectory = async () => {
               },
               { new: true }
             );
-
           } else {
             console.log("Skipping existing track:", metadata.common.title);
           }
@@ -137,4 +127,3 @@ const processDirectory = async () => {
     console.error("Error processing directory:", error);
   }
 };
-

@@ -25,5 +25,11 @@
   "bugs": {
     "url": "https://github.com/Djibril-6et/Spotify-Api/issues"
   },
-  "homepage": "https://github.com/Djibril-6et/Spotify-Api#readme"
+  "homepage": "https://github.com/Djibril-6et/Spotify-Api#readme",
+  "devDependencies": {
+    "eslint": "^8.54.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "prettier": "^3.1.0"
+  }
 }

@@ -1,50 +1,63 @@
 const express = require('express');
 const path = require('path');
 const mm = require('music-metadata');
+const recursiveReaddir = require('recursive-readdir');
+const fs = require('fs');
 
 const app = express();
 const port = 9000;
 
-const musicFolder = path.join(__dirname, '../../uploads');
+const musicFolder = path.join(__dirname, '../../sonzak/test');
 
 app.use('/music', express.static(musicFolder));
 
 app.get('/music-list', async (req, res) => {
-  const fs = require('fs');
-  fs.readdir(musicFolder, async (err, files) => {
-    if (err) {
-      return res.status(500).send('Error reading music folder');
-    }
-
+  try {
+    const files = await recursiveReaddir(musicFolder);
     const music = [];
-    for (const file of files) {
-      if (file.endsWith('.mp3') || file.endsWith('.aac')) {
-        const filePath = path.join(musicFolder, file);
-        const metadata = await extractMetadata(filePath);
-        const coverFileName = file.replace(/\.[^/.]+$/, '') + '.jpg';
 
-        // Créez une route pour servir la couverture en tant que ressource distincte
-        app.get(`/covers/${encodeURIComponent(coverFileName)}`, (req, res) => {
-          const coverBuffer = metadata.common.picture[0].data;
-          res.writeHead(200, {
-            'Content-Type': 'image/jpeg',
-            'Content-Length': coverBuffer.length,
-          });
-          res.end(coverBuffer);
-        });
+    for (const filePath of files) {
+      if (filePath.endsWith('.mp3') || filePath.endsWith('.m4a')) {
+        const metadata = await extractMetadata(filePath);
+        const fileName = path.relative(musicFolder, filePath);
+
+        let coverFileName;
+
+        if (metadata.common.picture && metadata.common.picture.length > 0) {
+          const uniqueId = fileName.replace(/\.[^/.]+$/, '');
+          coverFileName = `cover_${uniqueId}.jpg`;
+
+          const coverFilePath = path.join(musicFolder, coverFileName);
+
+          // Vérifier si le répertoire existe, sinon le créer
+          const coverDir = path.dirname(coverFilePath);
+          if (!fs.existsSync(coverDir)) {
+            fs.mkdirSync(coverDir, {recursive: true});
+          }
+
+          // Sauvegarder l'image de couverture si elle n'existe pas déjà
+          if (!fs.existsSync(coverFilePath)) {
+            fs.writeFileSync(coverFilePath, metadata.common.picture[0].data);
+          }
+        } else {
+          coverFileName = 'default_cover.jpg';
+        }
 
         music.push({
-          name: file,
-          path: `/music/${encodeURIComponent(file)}`,
+          name: fileName,
+          path: `/music/${encodeURIComponent(fileName)}`,
           artist: metadata.common.artist,
           album: metadata.common.album,
-          cover: `/covers/${encodeURIComponent(coverFileName)}`,
+          cover: `/cover/${encodeURIComponent(coverFileName)}`,
         });
       }
     }
 
     res.json({music});
-  });
+  } catch (error) {
+    console.error('Error reading music folder', error);
+    res.status(500).send('Error reading music folder');
+  }
 });
 
 app.get('/music/:fileName', (req, res) => {
@@ -57,6 +70,27 @@ app.get('/music/:fileName', (req, res) => {
       res.status(err.status).end();
     }
   });
+});
+
+app.get('/cover/:coverFileName', (req, res) => {
+  const coverFileName = req.params.coverFileName;
+  const coverFilePath = path.join(musicFolder, coverFileName);
+
+  // Ajouter une gestion d'erreur pour les fichiers non existants
+  if (!fs.existsSync(coverFilePath)) {
+    return res.status(404).send('Cover image not found');
+  }
+
+  res.sendFile(
+    coverFilePath,
+    {headers: {'Content-Type': 'image/jpeg'}},
+    err => {
+      if (err) {
+        console.error('Error reading cover image', err);
+        res.status(err.status).end();
+      }
+    },
+  );
 });
 
 async function extractMetadata(filePath) {

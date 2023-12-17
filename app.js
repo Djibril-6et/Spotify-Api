@@ -1,8 +1,12 @@
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const mm = require('music-metadata');
 const recursiveReaddir = require('recursive-readdir');
 const fs = require('fs');
+const apiRouter = require('./routes');
+const mongoose = require('mongoose');
+require('dotenv').config();
 
 const app = express();
 const port = 9000;
@@ -101,6 +105,22 @@ async function extractMetadata(filePath) {
     return {};
   }
 }
+
+mongoose
+  .connect(
+    `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}.mongodb.net/?retryWrites=true&w=majority`,
+  )
+  .then(console.log('Succesfully connected to database ✅'));
+
+const corsOptions = {
+  origin: 'http://localhost:9001', // Remplacez par votre origine frontend
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
+
+app.use(express.json());
+app.use('/api', cors(corsOptions), apiRouter);
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);

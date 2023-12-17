@@ -5,8 +5,10 @@ const mongoose = require('mongoose');
 
 require('dotenv').config();
 
-const serverBaseURL = 'http://localhost:9000';
-const directoryPath = '../../sonzak';
+// Mettez à jour la variable serverBaseURL avec le nouvel URL S3
+const serverBaseURL = 'https://tracksbucket.s3.eu-west-3.amazonaws.com';
+
+const directoryPath = '../../sonzak/uploads';
 
 // Définir le schéma Mongoose pour l'artiste
 const ArtistSchema = new mongoose.Schema({
@@ -21,7 +23,6 @@ const Artist = mongoose.model('Artist', ArtistSchema);
 const AlbumSchema = new mongoose.Schema({
   title: String,
   tracks: [{type: mongoose.Schema.Types.ObjectId, ref: 'Track'}],
-  cover: String,
 });
 
 const Album = mongoose.model('Album', AlbumSchema);
@@ -30,7 +31,6 @@ const Album = mongoose.model('Album', AlbumSchema);
 const TrackSchema = new mongoose.Schema({
   title: String,
   duration: String,
-  cover: String,
   url: String,
 });
 
@@ -60,20 +60,11 @@ const processDirectory = async currentPath => {
     const files = fs.readdirSync(currentPath);
     for (const file of files) {
       const filePath = path.join(currentPath, file);
-      const serverFileURL =
-        serverBaseURL + '/music/' + encodeURIComponent(filePath);
 
-      const uniqueId = file.replace(/\.[^/.]+$/, '');
-      coverFileName = `${uniqueId}.jpg`;
-
-      const absolutePath = path.resolve(__dirname, currentPath);
-      const absolutePathCover = path.join(absolutePath, coverFileName);
-      const absolutePathFile = path.join(
-        absolutePath,
-        encodeURIComponent(file),
-      );
-      const coverFileURL =
-        serverBaseURL + '/cover/cover_' + encodeURIComponent(absolutePathCover);
+      // Mettez à jour le serveurFileURL avec le nouveau format
+      const serverFileURL = `${serverBaseURL}/${encodeURIComponent(
+        file,
+      ).replace(/%2F/g, '/')}`;
 
       if (fs.statSync(filePath).isDirectory()) {
         // Si c'est un dossier, appeler la fonction récursivement
@@ -81,8 +72,6 @@ const processDirectory = async currentPath => {
       } else if (path.extname(filePath).toLowerCase() === '.m4a') {
         try {
           const metadata = await mm.parseFile(filePath);
-
-          const coverData = coverFileURL;
 
           const artistInstance = await Artist.findOneAndUpdate(
             {name: metadata.common.artist},
@@ -92,12 +81,7 @@ const processDirectory = async currentPath => {
 
           const albumInstance = await Album.findOneAndUpdate(
             {title: metadata.common.album},
-            {
-              $setOnInsert: {
-                title: metadata.common.album,
-                cover: coverData,
-              },
-            },
+            {},
             {upsert: true, new: true},
           );
 
@@ -110,7 +94,6 @@ const processDirectory = async currentPath => {
             const trackInstance = new Track({
               title: metadata.common.title,
               duration: metadata.format.duration,
-              cover: coverData,
               url: serverFileURL,
             });
 

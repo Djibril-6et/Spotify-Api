@@ -42,7 +42,7 @@ exports.updateAlbum = (req, res) => {
 
 //Delete one album
 exports.deleteAlbum = (req, res) => {
-  Album.findByIdAndRemove(req.params.id)
+  Album.findByIdAndDelete(req.params.id)
     .then(album => {
       if (!album) {
         return res.status(404).send({

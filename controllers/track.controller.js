@@ -42,7 +42,7 @@ exports.updateTrack = (req, res) => {
 
 //Delete one track
 exports.deleteTrack = (req, res) => {
-  Track.findByIdAndRemove(req.params.id)
+  Track.findByIdAndDelete(req.params.id)
     .then(track => {
       if (!track) {
         return res.status(404).send({
@@ -60,3 +60,13 @@ exports.deleteTrack = (req, res) => {
       });
     });
 };
+
+// // Get the number of tracks
+// exports.getTrackCount = (req, res) => {
+//   Track.estimatedDocumentCount()
+//     .then(count => res.status(200).json({count}))
+//     .catch(err => {
+//       console.error(err); // Affichez l'erreur complète dans la console
+//       res.status(400).send(err);
+//     });
+// };

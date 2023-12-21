@@ -42,7 +42,7 @@ exports.updateArtist = (req, res) => {
 
 //Delete one artist
 exports.deleteArtist = (req, res) => {
-  Artist.findByIdAndRemove(req.params.id)
+  Artist.findByIdAndDelete(req.params.id)
     .then(artist => {
       if (!artist) {
         return res.status(404).send({

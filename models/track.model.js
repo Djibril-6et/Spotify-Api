@@ -9,9 +9,20 @@ const trackSchema = mongoose.Schema({
     type: String,
     required: true,
   },
-  cover: {
+  url: {
     type: String,
     required: true,
+  },
+  cover: {
+    type: String,
+  },
+  album: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'Album',
+  },
+  artist: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'Artist',
   },
 });
 

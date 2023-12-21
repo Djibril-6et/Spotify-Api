@@ -1,4 +1,7 @@
 const Track = require('../models/track.model');
+// const mm = require('music-metadata');
+const musicMetadata = require('music-metadata');
+const NodeID3 = require('node-id3');
 
 //Get all tracks
 exports.getTrack = (req, res) => {
@@ -60,13 +63,3 @@ exports.deleteTrack = (req, res) => {
       });
     });
 };
-
-// // Get the number of tracks
-// exports.getTrackCount = (req, res) => {
-//   Track.estimatedDocumentCount()
-//     .then(count => res.status(200).json({count}))
-//     .catch(err => {
-//       console.error(err); // Affichez l'erreur complète dans la console
-//       res.status(400).send(err);
-//     });
-// };

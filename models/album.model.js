@@ -5,9 +5,16 @@ const albumSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+  cover: {
+    type: String,
+  },
   tracks: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: 'Track',
+  },
+  artist: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'Artist',
   },
 });
 

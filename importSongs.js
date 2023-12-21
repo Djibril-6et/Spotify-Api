@@ -5,12 +5,9 @@ const mongoose = require('mongoose');
 
 require('dotenv').config();
 
-// Mettez à jour la variable serverBaseURL avec le nouvel URL S3
 const serverBaseURL = 'https://tracksbucket.s3.eu-west-3.amazonaws.com';
-
 const directoryPath = '../../sonzak/uploads';
 
-// Définir le schéma Mongoose pour l'artiste
 const ArtistSchema = new mongoose.Schema({
   name: String,
   albums: [{type: mongoose.Schema.Types.ObjectId, ref: 'Album'}],
@@ -19,55 +16,53 @@ const ArtistSchema = new mongoose.Schema({
 
 const Artist = mongoose.model('Artist', ArtistSchema);
 
-// Définir le schéma Mongoose pour l'album
 const AlbumSchema = new mongoose.Schema({
   title: String,
+  artist: {type: mongoose.Schema.Types.ObjectId, ref: 'Artist'},
+  cover: String,
   tracks: [{type: mongoose.Schema.Types.ObjectId, ref: 'Track'}],
 });
 
 const Album = mongoose.model('Album', AlbumSchema);
 
-// Définir le schéma Mongoose pour la piste
 const TrackSchema = new mongoose.Schema({
   title: String,
   duration: String,
   url: String,
+  cover: String, // Nouveau champ ajouté
+  album: {type: mongoose.Schema.Types.ObjectId, ref: 'Album'},
+  artist: {type: mongoose.Schema.Types.ObjectId, ref: 'Artist'},
 });
 
 const Track = mongoose.model('Track', TrackSchema);
 
-// Connexion à MongoDB avec Mongoose
 mongoose
   .connect(
     `mongodb+srv://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}.mongodb.net/?retryWrites=true&w=majority`,
   )
-  .then(() => {
+  .then(async () => {
     console.log('Successfully connect to database');
 
-    // Appel de la fonction pour traiter le dossier
-    processDirectory(directoryPath).then(() => {
-      // Fermer la connexion à la base de données après avoir traité tous les fichiers
-      mongoose.connection.close();
-    });
+    await processDirectory(directoryPath);
+
+    mongoose.connection.close();
   })
   .catch(err => {
     console.error('Error connecting to database:', err);
   });
 
-// Fonction récursive pour parcourir le dossier et extraire les métadonnées
 const processDirectory = async currentPath => {
   try {
     const files = fs.readdirSync(currentPath);
     for (const file of files) {
       const filePath = path.join(currentPath, file);
-
-      // Mettez à jour le serveurFileURL avec le nouveau format
       const serverFileURL = `${serverBaseURL}/${encodeURIComponent(
         file,
       ).replace(/%2F/g, '/')}`;
 
+      let trackInstance;
+
       if (fs.statSync(filePath).isDirectory()) {
-        // Si c'est un dossier, appeler la fonction récursivement
         await processDirectory(filePath);
       } else if (path.extname(filePath).toLowerCase() === '.m4a') {
         try {
@@ -75,51 +70,57 @@ const processDirectory = async currentPath => {
 
           const artistInstance = await Artist.findOneAndUpdate(
             {name: metadata.common.artist},
-            {$setOnInsert: {name: metadata.common.artist}},
+            {
+              $setOnInsert: {name: metadata.common.artist},
+            },
             {upsert: true, new: true},
           );
 
           const albumInstance = await Album.findOneAndUpdate(
-            {title: metadata.common.album},
-            {},
+            {title: metadata.common.album, artist: artistInstance._id},
+            {
+              $setOnInsert: {
+                title: metadata.common.album,
+                artist: artistInstance._id,
+                cover: `${serverBaseURL}/${encodeURIComponent(
+                  metadata.common.album,
+                )}/cover.jpg`,
+              },
+            },
             {upsert: true, new: true},
           );
 
-          // Vérifier si la piste existe déjà
-          const existingTrack = await Track.findOne({
+          trackInstance = new Track({
             title: metadata.common.title,
+            duration: metadata.format.duration,
+            url: `${serverBaseURL}/${encodeURIComponent(
+              metadata.common.album,
+            )}/${encodeURIComponent(file)}`,
+            cover: albumInstance.cover, // Ajout du champ cover
+            album: albumInstance._id,
+            artist: artistInstance._id,
           });
 
-          if (!existingTrack) {
-            const trackInstance = new Track({
-              title: metadata.common.title,
-              duration: metadata.format.duration,
-              url: serverFileURL,
-            });
+          await trackInstance.save();
 
-            await trackInstance.save();
+          await Album.findOneAndUpdate(
+            {_id: albumInstance._id},
+            {$push: {tracks: trackInstance._id}},
+            {new: true},
+          );
 
-            await Album.findOneAndUpdate(
-              {_id: albumInstance._id},
-              {$push: {tracks: trackInstance._id}},
-              {new: true},
-            );
-
-            await Artist.findOneAndUpdate(
-              {_id: artistInstance._id},
-              {
-                $addToSet: {
-                  albums: albumInstance._id,
-                  tracks: trackInstance._id,
-                },
+          await Artist.findOneAndUpdate(
+            {_id: artistInstance._id},
+            {
+              $addToSet: {
+                albums: albumInstance._id,
+                tracks: trackInstance._id,
               },
-              {new: true},
-            );
+            },
+            {new: true},
+          );
 
-            console.log('Metadata inserted:', metadata.common.title);
-          } else {
-            console.log('Skipping existing track:', metadata.common.title);
-          }
+          console.log('Metadata inserted:', metadata.common.title);
         } catch (error) {
           console.error('Error parsing file:', error);
         }

@@ -14,6 +14,13 @@ exports.getOneArtist = (req, res) => {
     .catch(err => res.status(400).send(err));
 };
 
+//Get one artist by name
+exports.getOneArtistByName = (req, res) => {
+  Artist.findOne({name: req.params.name})
+    .then(artist => res.status(200).send(artist))
+    .catch(err => res.status(400).send(err));
+};
+
 //Create new artist
 exports.createArtist = (req, res) => {
   Artist.create(req.body)

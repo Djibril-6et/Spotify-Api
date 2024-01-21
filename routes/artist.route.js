@@ -4,6 +4,7 @@ const ArtistController = require('../controllers/artist.controller');
 
 router.get('/', ArtistController.getArtist);
 router.get('/:id', ArtistController.getOneArtist);
+router.get('/name/:name', ArtistController.getOneArtistByName);
 router.post('/new-artist', ArtistController.createArtist);
 router.put('/update/:id', ArtistController.updateArtist);
 router.delete('/delete/:id', ArtistController.deleteArtist);

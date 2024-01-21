@@ -17,6 +17,13 @@ exports.getOneTrack = (req, res) => {
     .catch(err => res.status(400).send(err));
 };
 
+//Get one track by name
+exports.getOneTrackByName = (req, res) => {
+  Track.findOne({title: req.params.title})
+    .then(track => res.status(200).send(track))
+    .catch(err => res.status(400).send(err));
+};
+
 //Create new track
 exports.createTrack = (req, res) => {
   Track.create(req.body)

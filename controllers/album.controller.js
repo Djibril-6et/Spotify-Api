@@ -14,6 +14,13 @@ exports.getOneAlbum = (req, res) => {
     .catch(err => res.status(400).send(err));
 };
 
+//Get one album by name
+exports.getOneAlbumByName = (req, res) => {
+  Album.findOne({title: req.params.title})
+    .then(album => res.status(200).send(album))
+    .catch(err => res.status(400).send(err));
+};
+
 //Create new album
 exports.createAlbum = (req, res) => {
   Album.create(req.body)

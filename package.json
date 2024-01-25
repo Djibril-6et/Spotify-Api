@@ -1,4 +1,7 @@
 {
+  "engines": {
+    "node": "21.6.0"
+  },
   "dependencies": {
     "aws-sdk": "^2.1523.0",
     "cors": "^2.8.5",

@@ -1,0 +1,11 @@
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install -g n
+        - n 21.6.0
+    build:
+      commands:
+        - n use 21.6.0
+        - npm ci
+        - npm run build

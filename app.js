@@ -145,7 +145,7 @@ app.use('/music', express.static(musicFolder));
 
 // Centralisation des options CORS
 const corsOptions = {
-  origin: 'http://localhost:9001', // Remplacez par votre origine frontend
+  origin: 'https://m2-spotify-backoffice.netlify.app', // Remplacez par votre origine frontend
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
   optionsSuccessStatus: 204,
